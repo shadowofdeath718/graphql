@@ -37,7 +37,7 @@ func Execute(p ExecuteParams) (result *Result) {
 	go func(out chan<- *Result, done <-chan struct{}) {
 		result := &Result{}
 
-		exeContext, err := buildExecutionContext(BuildExecutionCtxParams{
+		exeContext, err := buildExecutionContext(buildExecutionCtxParams{
 			Schema:        p.Schema,
 			Root:          p.Root,
 			AST:           p.AST,
@@ -73,7 +73,7 @@ func Execute(p ExecuteParams) (result *Result) {
 			}
 		}()
 
-		result = executeOperation(ExecuteOperationParams{
+		result = executeOperation(executeOperationParams{
 			ExecutionContext: exeContext,
 			Root:             p.Root,
 			Operation:        exeContext.Operation,
@@ -95,7 +95,7 @@ func Execute(p ExecuteParams) (result *Result) {
 	return
 }
 
-type BuildExecutionCtxParams struct {
+type buildExecutionCtxParams struct {
 	Schema        Schema
 	Root          interface{}
 	AST           *ast.Document
@@ -106,7 +106,8 @@ type BuildExecutionCtxParams struct {
 	Context       context.Context
 	PanicHandler  func(ctx context.Context, err interface{})
 }
-type ExecutionContext struct {
+
+type executionContext struct {
 	Schema         Schema
 	Fragments      map[string]ast.Definition
 	Root           interface{}
@@ -117,8 +118,8 @@ type ExecutionContext struct {
 	PanicHandler   func(ctx context.Context, err interface{})
 }
 
-func buildExecutionContext(p BuildExecutionCtxParams) (*ExecutionContext, error) {
-	eCtx := &ExecutionContext{}
+func buildExecutionContext(p buildExecutionCtxParams) (*executionContext, error) {
+	eCtx := &executionContext{}
 	var operation *ast.OperationDefinition
 	fragments := map[string]ast.Definition{}
 
@@ -165,25 +166,25 @@ func buildExecutionContext(p BuildExecutionCtxParams) (*ExecutionContext, error)
 	return eCtx, nil
 }
 
-type ExecuteOperationParams struct {
-	ExecutionContext *ExecutionContext
+type executeOperationParams struct {
+	ExecutionContext *executionContext
 	Root             interface{}
 	Operation        ast.Definition
 }
 
-func executeOperation(p ExecuteOperationParams) *Result {
+func executeOperation(p executeOperationParams) *Result {
 	operationType, err := getOperationRootType(p.ExecutionContext.Schema, p.Operation)
 	if err != nil {
 		return &Result{Errors: gqlerrors.FormatErrors(err)}
 	}
 
-	fields := collectFields(CollectFieldsParams{
+	fields := collectFields(collectFieldsParams{
 		ExeContext:   p.ExecutionContext,
 		RuntimeType:  operationType,
 		SelectionSet: p.Operation.GetSelectionSet(),
 	})
 
-	executeFieldsParams := ExecuteFieldsParams{
+	executeFieldsParams := executeFieldsParams{
 		ExecutionContext: p.ExecutionContext,
 		ParentType:       operationType,
 		Source:           p.Root,
@@ -244,15 +245,15 @@ func getOperationRootType(schema Schema, operation ast.Definition) (*Object, err
 	}
 }
 
-type ExecuteFieldsParams struct {
-	ExecutionContext *ExecutionContext
+type executeFieldsParams struct {
+	ExecutionContext *executionContext
 	ParentType       *Object
 	Source           interface{}
 	Fields           map[string][]*ast.Field
 }
 
 // Implements the "Evaluating selection sets" section of the spec for "write" mode.
-func executeFieldsSerially(p ExecuteFieldsParams) *Result {
+func executeFieldsSerially(p executeFieldsParams) *Result {
 	if p.Source == nil {
 		p.Source = map[string]interface{}{}
 	}
@@ -276,7 +277,7 @@ func executeFieldsSerially(p ExecuteFieldsParams) *Result {
 }
 
 // Implements the "Evaluating selection sets" section of the spec for "read" mode.
-func executeFields(p ExecuteFieldsParams) *Result {
+func executeFields(p executeFieldsParams) *Result {
 	if p.Source == nil {
 		p.Source = map[string]interface{}{}
 	}
@@ -299,8 +300,8 @@ func executeFields(p ExecuteFieldsParams) *Result {
 	}
 }
 
-type CollectFieldsParams struct {
-	ExeContext           *ExecutionContext
+type collectFieldsParams struct {
+	ExeContext           *executionContext
 	RuntimeType          *Object // previously known as OperationType
 	SelectionSet         *ast.SelectionSet
 	Fields               map[string][]*ast.Field
@@ -312,7 +313,7 @@ type CollectFieldsParams struct {
 // CollectFields requires the "runtime type" of an object. For a field which
 // returns and Interface or Union type, the "runtime type" will be the actual
 // Object type returned by that field.
-func collectFields(p CollectFieldsParams) map[string][]*ast.Field {
+func collectFields(p collectFieldsParams) map[string][]*ast.Field {
 
 	fields := p.Fields
 	if fields == nil {
@@ -341,7 +342,7 @@ func collectFields(p CollectFieldsParams) map[string][]*ast.Field {
 				!doesFragmentConditionMatch(p.ExeContext, selection, p.RuntimeType) {
 				continue
 			}
-			innerParams := CollectFieldsParams{
+			innerParams := collectFieldsParams{
 				ExeContext:           p.ExeContext,
 				RuntimeType:          p.RuntimeType,
 				SelectionSet:         selection.SelectionSet,
@@ -368,7 +369,7 @@ func collectFields(p CollectFieldsParams) map[string][]*ast.Field {
 				if !doesFragmentConditionMatch(p.ExeContext, fragment, p.RuntimeType) {
 					continue
 				}
-				innerParams := CollectFieldsParams{
+				innerParams := collectFieldsParams{
 					ExeContext:           p.ExeContext,
 					RuntimeType:          p.RuntimeType,
 					SelectionSet:         fragment.GetSelectionSet(),
@@ -384,7 +385,7 @@ func collectFields(p CollectFieldsParams) map[string][]*ast.Field {
 
 // Determines if a field should be included based on the @include and @skip
 // directives, where @skip has higher precedence than @include.
-func shouldIncludeNode(eCtx *ExecutionContext, directives []*ast.Directive) bool {
+func shouldIncludeNode(eCtx *executionContext, directives []*ast.Directive) bool {
 
 	defaultReturnValue := true
 
@@ -442,7 +443,7 @@ func shouldIncludeNode(eCtx *ExecutionContext, directives []*ast.Directive) bool
 }
 
 // Determines if a fragment is applicable to the given type.
-func doesFragmentConditionMatch(eCtx *ExecutionContext, fragment ast.Node, ttype *Object) bool {
+func doesFragmentConditionMatch(eCtx *executionContext, fragment ast.Node, ttype *Object) bool {
 
 	switch fragment := fragment.(type) {
 	case *ast.FragmentDefinition:
@@ -513,7 +514,7 @@ type resolveFieldResultState struct {
 // figures out the value that the field returns by calling its resolve function,
 // then calls completeValue to complete promises, serialize scalars, or execute
 // the sub-selection-set for objects.
-func resolveField(eCtx *ExecutionContext, parentType *Object, source interface{}, fieldASTs []*ast.Field) (result interface{}, resultState resolveFieldResultState) {
+func resolveField(eCtx *executionContext, parentType *Object, source interface{}, fieldASTs []*ast.Field) (result interface{}, resultState resolveFieldResultState) {
 	// catch panic from resolveFn
 	var returnType Output
 	defer func() (interface{}, resolveFieldResultState) {
@@ -592,7 +593,7 @@ func resolveField(eCtx *ExecutionContext, parentType *Object, source interface{}
 	return completed, resultState
 }
 
-func completeValueCatchingError(eCtx *ExecutionContext, returnType Type, fieldASTs []*ast.Field, info ResolveInfo, result interface{}) (completed interface{}) {
+func completeValueCatchingError(eCtx *executionContext, returnType Type, fieldASTs []*ast.Field, info ResolveInfo, result interface{}) (completed interface{}) {
 	// catch panic
 	defer func() interface{} {
 		if r := recover(); r != nil {
@@ -616,7 +617,7 @@ func completeValueCatchingError(eCtx *ExecutionContext, returnType Type, fieldAS
 	return completed
 }
 
-func completeValue(eCtx *ExecutionContext, returnType Type, fieldASTs []*ast.Field, info ResolveInfo, result interface{}) interface{} {
+func completeValue(eCtx *executionContext, returnType Type, fieldASTs []*ast.Field, info ResolveInfo, result interface{}) interface{} {
 
 	resultVal := reflect.ValueOf(result)
 	if resultVal.IsValid() && resultVal.Type().Kind() == reflect.Func {
@@ -675,9 +676,9 @@ func completeValue(eCtx *ExecutionContext, returnType Type, fieldASTs []*ast.Fie
 	}
 
 	// Not reachable. All possible output types have been considered.
-	err := invariant(false,
-		fmt.Sprintf(`Cannot complete value of unexpected type "%v."`, returnType),
-	)
+	err := invariantf(false,
+		`Cannot complete value of unexpected type "%v."`, returnType)
+
 	if err != nil {
 		panic(gqlerrors.FormatError(err))
 	}
@@ -686,7 +687,7 @@ func completeValue(eCtx *ExecutionContext, returnType Type, fieldASTs []*ast.Fie
 
 // completeAbstractValue completes value of an Abstract type (Union / Interface) by determining the runtime type
 // of that value, then completing based on that type.
-func completeAbstractValue(eCtx *ExecutionContext, returnType Abstract, fieldASTs []*ast.Field, info ResolveInfo, result interface{}) interface{} {
+func completeAbstractValue(eCtx *executionContext, returnType Abstract, fieldASTs []*ast.Field, info ResolveInfo, result interface{}) interface{} {
 
 	var runtimeType *Object
 
@@ -723,7 +724,7 @@ func completeAbstractValue(eCtx *ExecutionContext, returnType Abstract, fieldAST
 }
 
 // completeObjectValue complete an Object value by executing all sub-selections.
-func completeObjectValue(eCtx *ExecutionContext, returnType *Object, fieldASTs []*ast.Field, info ResolveInfo, result interface{}) interface{} {
+func completeObjectValue(eCtx *executionContext, returnType *Object, fieldASTs []*ast.Field, info ResolveInfo, result interface{}) interface{} {
 
 	// If there is an isTypeOf predicate function, call it with the
 	// current result. If isTypeOf returns false, then raise an error rather
@@ -750,7 +751,7 @@ func completeObjectValue(eCtx *ExecutionContext, returnType *Object, fieldASTs [
 		}
 		selectionSet := fieldAST.SelectionSet
 		if selectionSet != nil {
-			innerParams := CollectFieldsParams{
+			innerParams := collectFieldsParams{
 				ExeContext:           eCtx,
 				RuntimeType:          returnType,
 				SelectionSet:         selectionSet,
@@ -760,7 +761,7 @@ func completeObjectValue(eCtx *ExecutionContext, returnType *Object, fieldASTs [
 			subFieldASTs = collectFields(innerParams)
 		}
 	}
-	executeFieldsParams := ExecuteFieldsParams{
+	executeFieldsParams := executeFieldsParams{
 		ExecutionContext: eCtx,
 		ParentType:       returnType,
 		Source:           result,
@@ -782,17 +783,17 @@ func completeLeafValue(returnType Leaf, result interface{}) interface{} {
 }
 
 // completeListValue complete a list value by completing each item in the list with the inner type
-func completeListValue(eCtx *ExecutionContext, returnType *List, fieldASTs []*ast.Field, info ResolveInfo, result interface{}) interface{} {
+func completeListValue(eCtx *executionContext, returnType *List, fieldASTs []*ast.Field, info ResolveInfo, result interface{}) interface{} {
 	resultVal := reflect.ValueOf(result)
 	parentTypeName := ""
 	if info.ParentType != nil {
 		parentTypeName = info.ParentType.Name()
 	}
-	err := invariant(
+	err := invariantf(
 		resultVal.IsValid() && resultVal.Type().Kind() == reflect.Slice,
-		fmt.Sprintf("User Error: expected iterable, but did not find one "+
-			"for field %v.%v.", parentTypeName, info.FieldName),
-	)
+		"User Error: expected iterable, but did not find one "+
+			"for field %v.%v.", parentTypeName, info.FieldName)
+
 	if err != nil {
 		panic(gqlerrors.FormatError(err))
 	}
