@@ -520,7 +520,7 @@ func resolveField(eCtx *executionContext, parentType *Object, source interface{}
 	defer func() (interface{}, resolveFieldResultState) {
 		if r := recover(); r != nil {
 			if eCtx.PanicHandler != nil {
-				eCtx.PanicHandler(eCtx.Context, r)
+				eCtx.PanicHandler(eCtx.Context, &r)
 			}
 			var err error
 			if r, ok := r.(string); ok {
