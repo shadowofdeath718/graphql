@@ -11,6 +11,8 @@ import (
 )
 
 func checkList(t *testing.T, testType graphql.Type, testData interface{}, expected *graphql.Result) {
+	// TODO: uncomment t.Helper when support for go1.8 is dropped.
+	//t.Helper()
 	data := map[string]interface{}{
 		"test": testData,
 	}
@@ -263,6 +265,10 @@ func TestLists_NonNullListOfNullableObjectsReturnsNull(t *testing.T) {
 						Column: 10,
 					},
 				},
+				Path: []interface{}{
+					"nest",
+					"test",
+				},
 			},
 		},
 	}
@@ -332,6 +338,10 @@ func TestLists_NonNullListOfNullableFunc_ReturnsNull(t *testing.T) {
 						Line:   1,
 						Column: 10,
 					},
+				},
+				Path: []interface{}{
+					"nest",
+					"test",
 				},
 			},
 		},
@@ -429,6 +439,11 @@ func TestLists_NullableListOfNonNullObjects_ContainsNull(t *testing.T) {
 						Column: 10,
 					},
 				},
+				Path: []interface{}{
+					"nest",
+					"test",
+					1,
+				},
 			},
 		},
 	}
@@ -493,6 +508,11 @@ func TestLists_NullableListOfNonNullFunc_ContainsNull(t *testing.T) {
 						Line:   1,
 						Column: 10,
 					},
+				},
+				Path: []interface{}{
+					"nest",
+					"test",
+					1,
 				},
 			},
 		},
@@ -561,8 +581,22 @@ func TestLists_NullableListOfNonNullArrayOfFunc_ContainsNulls(t *testing.T) {
 	expected := &graphql.Result{
 		Data: map[string]interface{}{
 			"nest": map[string]interface{}{
-				"test": []interface{}{
-					1, nil, 2,
+				"test": nil,
+			},
+		},
+		Errors: []gqlerrors.FormattedError{
+			{
+				Message: "Cannot return null for non-nullable field DataType.test.",
+				Locations: []location.SourceLocation{
+					{
+						Line:   1,
+						Column: 10,
+					},
+				},
+				Path: []interface{}{
+					"nest",
+					"test",
+					1,
 				},
 			},
 		},
@@ -605,6 +639,11 @@ func TestLists_NonNullListOfNonNullObjects_ContainsNull(t *testing.T) {
 						Column: 10,
 					},
 				},
+				Path: []interface{}{
+					"nest",
+					"test",
+					1,
+				},
 			},
 		},
 	}
@@ -625,6 +664,10 @@ func TestLists_NonNullListOfNonNullObjects_ReturnsNull(t *testing.T) {
 						Line:   1,
 						Column: 10,
 					},
+				},
+				Path: []interface{}{
+					"nest",
+					"test",
 				},
 			},
 		},
@@ -677,6 +720,11 @@ func TestLists_NonNullListOfNonNullFunc_ContainsNull(t *testing.T) {
 						Column: 10,
 					},
 				},
+				Path: []interface{}{
+					"nest",
+					"test",
+					1,
+				},
 			},
 		},
 	}
@@ -702,6 +750,10 @@ func TestLists_NonNullListOfNonNullFunc_ReturnsNull(t *testing.T) {
 						Line:   1,
 						Column: 10,
 					},
+				},
+				Path: []interface{}{
+					"nest",
+					"test",
 				},
 			},
 		},
@@ -752,9 +804,21 @@ func TestLists_NonNullListOfNonNullArrayOfFunc_ContainsNulls(t *testing.T) {
 	}
 	expected := &graphql.Result{
 		Data: map[string]interface{}{
-			"nest": map[string]interface{}{
-				"test": []interface{}{
-					1, nil, 2,
+			"nest": nil,
+		},
+		Errors: []gqlerrors.FormattedError{
+			{
+				Message: "Cannot return null for non-nullable field DataType.test.",
+				Locations: []location.SourceLocation{
+					{
+						Line:   1,
+						Column: 10,
+					},
+				},
+				Path: []interface{}{
+					"nest",
+					"test",
+					1,
 				},
 			},
 		},
@@ -773,10 +837,65 @@ func TestLists_UserErrorExpectIterableButDidNotGetOne(t *testing.T) {
 		},
 		Errors: []gqlerrors.FormattedError{
 			{
-				Message:   "User Error: expected iterable, but did not find one for field DataType.test.",
-				Locations: []location.SourceLocation{},
+				Message: "User Error: expected iterable, but did not find one for field DataType.test.",
+				Locations: []location.SourceLocation{
+					{
+						Line:   1,
+						Column: 10,
+					},
+				},
+				Path: []interface{}{
+					"nest",
+					"test",
+				},
 			},
 		},
 	}
 	checkList(t, ttype, data, expected)
+}
+
+func TestLists_ArrayOfNullableObjects_ContainsValues(t *testing.T) {
+	ttype := graphql.NewList(graphql.Int)
+	data := [2]interface{}{
+		1, 2,
+	}
+	expected := &graphql.Result{
+		Data: map[string]interface{}{
+			"nest": map[string]interface{}{
+				"test": []interface{}{
+					1, 2,
+				},
+			},
+		},
+	}
+	checkList(t, ttype, data, expected)
+}
+
+func TestLists_ValueMayBeNilPointer(t *testing.T) {
+	var listTestSchema, _ = graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{
+			Name: "Query",
+			Fields: graphql.Fields{
+				"list": &graphql.Field{
+					Type: graphql.NewList(graphql.Int),
+					Resolve: func(_ graphql.ResolveParams) (interface{}, error) {
+						return []int(nil), nil
+					},
+				},
+			},
+		}),
+	})
+	query := "{ list }"
+	expected := &graphql.Result{
+		Data: map[string]interface{}{
+			"list": []interface{}{},
+		},
+	}
+	result := g(t, graphql.Params{
+		Schema:        listTestSchema,
+		RequestString: query,
+	})
+	if !reflect.DeepEqual(expected, result) {
+		t.Fatalf("Unexpected result, Diff: %v", testutil.Diff(expected, result))
+	}
 }
