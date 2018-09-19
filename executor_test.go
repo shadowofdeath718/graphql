@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/graphql-go/graphql"
-	"github.com/graphql-go/graphql/gqlerrors"
-	"github.com/graphql-go/graphql/language/location"
-	"github.com/graphql-go/graphql/testutil"
+	"github.com/shadowofdeath718/graphql"
+	"github.com/shadowofdeath718/graphql/gqlerrors"
+	"github.com/shadowofdeath718/graphql/language/location"
+	"github.com/shadowofdeath718/graphql/testutil"
 )
 
 func TestExecutesArbitraryCode(t *testing.T) {
@@ -582,7 +582,8 @@ func TestPanicHandler(t *testing.T) {
 	}
 	expectedErrors := []gqlerrors.FormattedError{
 		{Message: "Error getting syncError",
-			Locations: []location.SourceLocation{{Line: 1, Column: 2}}},
+			Locations: []location.SourceLocation{{Line: 1, Column: 2}},
+			Path:      []interface{}{"syncError"}},
 	}
 	data := map[string]interface{}{
 		"syncError": func() interface{} { panic("Error getting syncError") },
@@ -607,7 +608,7 @@ func TestPanicHandler(t *testing.T) {
 		AST:    ast,
 		Root:   data,
 		PanicHandler: func(ctx context.Context, v interface{}) {
-			caughtPanic = v
+			caughtPanic = reflect.ValueOf(v).Elem().Interface()
 		},
 	}
 	result := testutil.TestExecute(t, ep)

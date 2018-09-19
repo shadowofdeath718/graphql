@@ -4,6 +4,8 @@ An implementation of GraphQL in Go. Follows the official reference implementatio
 
 Supports: queries, mutations & subscriptions.
 
+**A fork from https://github.com/graphql-go/graphql for personal usage**
+
 ### Documentation
 
 godoc: https://godoc.org/github.com/graphql-go/graphql

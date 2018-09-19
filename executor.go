@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/graphql-go/graphql/gqlerrors"
-	"github.com/graphql-go/graphql/language/ast"
+	"github.com/shadowofdeath718/graphql/gqlerrors"
+	"github.com/shadowofdeath718/graphql/language/ast"
 )
 
 type ExecuteParams struct {
@@ -583,6 +583,9 @@ func resolveField(eCtx *executionContext, parentType *Object, source interface{}
 	var returnType Output
 	defer func() (interface{}, resolveFieldResultState) {
 		if r := recover(); r != nil {
+			if eCtx.PanicHandler != nil {
+				eCtx.PanicHandler(eCtx.Context, &r)
+			}
 			handleFieldError(r, FieldASTsToNodeASTs(fieldASTs), path, returnType, eCtx)
 			return result, resultState
 		}

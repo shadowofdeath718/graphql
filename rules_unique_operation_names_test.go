@@ -3,9 +3,9 @@ package graphql_test
 import (
 	"testing"
 
-	"github.com/graphql-go/graphql"
-	"github.com/graphql-go/graphql/gqlerrors"
-	"github.com/graphql-go/graphql/testutil"
+	"github.com/shadowofdeath718/graphql"
+	"github.com/shadowofdeath718/graphql/gqlerrors"
+	"github.com/shadowofdeath718/graphql/testutil"
 )
 
 func TestValidate_UniqueOperationNames_NoOperations(t *testing.T) {
