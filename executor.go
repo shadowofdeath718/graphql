@@ -85,7 +85,7 @@ type buildExecutionCtxParams struct {
 	Args          map[string]interface{}
 	Result        *Result
 	Context       context.Context
-	PanicHandler  func(ctx context.Context, err interface{})
+	PanicHandler  func(ctx context.Context, err interface{}) error
 }
 
 type executionContext struct {
@@ -96,7 +96,7 @@ type executionContext struct {
 	VariableValues map[string]interface{}
 	Errors         []gqlerrors.FormattedError
 	Context        context.Context
-	PanicHandler   func(ctx context.Context, err interface{})
+	PanicHandler   func(ctx context.Context, err interface{}) error
 }
 
 func buildExecutionContext(p buildExecutionCtxParams) (*executionContext, error) {
@@ -584,7 +584,7 @@ func resolveField(eCtx *executionContext, parentType *Object, source interface{}
 	defer func() (interface{}, resolveFieldResultState) {
 		if r := recover(); r != nil {
 			if eCtx.PanicHandler != nil {
-				eCtx.PanicHandler(eCtx.Context, &r)
+				r = eCtx.PanicHandler(eCtx.Context, r)
 			}
 			handleFieldError(r, FieldASTsToNodeASTs(fieldASTs), path, returnType, eCtx)
 			return result, resultState

@@ -8,7 +8,7 @@ import (
 	"github.com/shadowofdeath718/graphql/language/source"
 )
 
-type PanicHandler func(ctx context.Context, v interface{})
+type PanicHandler func(ctx context.Context, v interface{}) error
 
 type Params struct {
 	// The GraphQL type system to use when validating and executing a query.
